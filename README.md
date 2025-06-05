@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # forum_diskusi_mini
 
 A new Flutter project.
@@ -14,3 +15,7 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+=======
+# FlutterDiskusiMini
+amabtukam
+>>>>>>> cdda96c725e4757bb18d9d9804618c106e946e53

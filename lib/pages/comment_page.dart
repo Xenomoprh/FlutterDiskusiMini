@@ -27,7 +27,7 @@ class _CommentPageState extends State<CommentPage> {
         .collection('comments')
         .add({
       'content': content,
-      'createdBy': user.uid,
+      'createdBy': user.uid, // UID pengguna yang membuat komentar
       'timestamp': FieldValue.serverTimestamp(),
     });
 
@@ -50,20 +50,41 @@ class _CommentPageState extends State<CommentPage> {
             child: StreamBuilder<QuerySnapshot>(
               stream: commentsRef.snapshots(),
               builder: (context, snapshot) {
-                if (snapshot.hasError) return const Text('Error');
-                if (!snapshot.hasData) return const CircularProgressIndicator();
+                if (snapshot.hasError) return const Center(child: Text('Error memuat komentar.'));
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
                 final docs = snapshot.data!.docs;
 
-                if (docs.isEmpty) return const Text('Belum ada komentar.');
+                if (docs.isEmpty) return const Center(child: Text('Belum ada komentar.'));
 
                 return ListView.builder(
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     final data = docs[index].data() as Map<String, dynamic>;
+                    final commentContent = data['content'] ?? '';
+                    final commentCreatorUid = data['createdBy']; // UID pembuat komentar
+
                     return ListTile(
-                      title: Text(data['content'] ?? ''),
-                      subtitle: Text('Oleh: ${data['createdBy'] ?? 'Anonim'}'),
+                      title: Text(commentContent),
+                      subtitle: FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance.collection('users').doc(commentCreatorUid).get(),
+                        builder: (context, userSnapshot) {
+                          if (userSnapshot.connectionState == ConnectionState.waiting) {
+                            return const Text('Memuat info pengguna...');
+                          }
+                          if (userSnapshot.hasError || !userSnapshot.hasData || !userSnapshot.data!.exists) {
+                            return const Text('Oleh: Pengguna Tidak Dikenal');
+                          }
+                          final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+                          final displayName = userData['displayName'];
+                          final finalDisplayName = (displayName == null || displayName.isEmpty) ? 'Anonim' : displayName;
+                          return Text('Oleh: $finalDisplayName');
+                        },
+                      ),
+                      // Anda bisa menambahkan timestamp komentar jika ada
+                      // trailing: Text(data['timestamp'] != null ? (data['timestamp'] as Timestamp).toDate().toString() : ''),
                     );
                   },
                 );

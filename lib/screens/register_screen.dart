@@ -52,15 +52,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'displayName': nameController.text.trim(),
           'email': emailController.text.trim(),
           'uid': userCredential.user!.uid,
-          'createdAt': Timestamp.now(), // Opsional: tambahkan timestamp
+          'createdAt': Timestamp.now(),
         });
-      }
 
-      if (mounted) { // Pastikan widget masih ada di tree
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        if (mounted) {
+          // Tampilkan notifikasi berhasil
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Akun berhasil dibuat!')),
+          );
+          // Tunggu sebentar agar user melihat notifikasi
+          await Future.delayed(const Duration(seconds: 1));
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+          );
+        }
       }
     } on FirebaseAuthException catch (e) {
       String message = 'Registrasi gagal.';

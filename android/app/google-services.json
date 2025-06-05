@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "581742076481",
+    "project_id": "forummini-f772a",
+    "storage_bucket": "forummini-f772a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:581742076481:android:df23d628d80cca37a5dcc0",
+        "android_client_info": {
+          "package_name": "com.example.forum_diskusi_mini"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDA1Trf4LN9KkNWcYlcilXKS2bkbZDkpoY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:581742076481:android:30534e4e681efa6ea5dcc0",
+        "android_client_info": {
+          "package_name": "com.ratatoskr.sevenforum"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDA1Trf4LN9KkNWcYlcilXKS2bkbZDkpoY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,4 +1,3 @@
-// lib/pages/create_thread_page.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -12,7 +11,7 @@ class CreateThreadPage extends StatefulWidget {
 
 class _CreateThreadPageState extends State<CreateThreadPage> {
   final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _contentController = TextEditingController(); // Controller untuk konten Markdown
+  final TextEditingController _contentController = TextEditingController();
 
   bool _isUploading = false;
 
@@ -44,7 +43,7 @@ class _CreateThreadPageState extends State<CreateThreadPage> {
     }
 
     String title = _titleController.text.trim();
-    String markdownContent = _contentController.text.trim(); // Ambil dari TextField biasa
+    String markdownContent = _contentController.text.trim();
 
     if (title.isEmpty) {
       if (mounted) {
@@ -73,7 +72,7 @@ class _CreateThreadPageState extends State<CreateThreadPage> {
     try {
       await FirebaseFirestore.instance.collection('threads').add({
         'title': title,
-        'content': markdownContent, // Simpan string Markdown mentah
+        'content': markdownContent,
         'createdBy': user.uid,
         'timestamp': FieldValue.serverTimestamp(),
         'upvotes': 0,
@@ -103,9 +102,20 @@ class _CreateThreadPageState extends State<CreateThreadPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: theme.colorScheme.background,
       appBar: AppBar(
-        title: const Text('Buat Thread Baru (Markdown Input)'),
+        elevation: 0,
+        backgroundColor: theme.colorScheme.background,
+        iconTheme: IconThemeData(color: theme.colorScheme.primary),
+        title: Text(
+          'Buat Thread Baru',
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           _isUploading
               ? const Padding(
@@ -114,51 +124,100 @@ class _CreateThreadPageState extends State<CreateThreadPage> {
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white)),
+                          strokeWidth: 2, color: Colors.blue)),
                 )
               : IconButton(
-                  icon: const Icon(Icons.check_circle_outline),
+                  icon: const Icon(Icons.check_circle_rounded),
                   tooltip: 'Posting Thread',
+                  color: theme.colorScheme.primary,
                   onPressed: _uploadPost,
                 ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Judul Diskusi',
-                hintText: 'Masukkan judul yang menarik...',
-                border: OutlineInputBorder(),
-              ),
-              textInputAction: TextInputAction.next,
-            ),
-            const SizedBox(height: 16.0),
-            // Tidak ada toolbar Markdown khusus, pengguna mengetik manual
-            const Text(
-              'Isi Diskusi (Gunakan sintaks Markdown):',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8.0),
-            Expanded(
-              child: TextField( // Menggunakan TextField biasa
-                controller: _contentController,
-                maxLines: null, // Agar bisa banyak baris dan scroll
-                keyboardType: TextInputType.multiline,
-                decoration: const InputDecoration(
-                  hintText: 'Contoh: **tebal**, *miring*, # Judul, - item list',
-                  border: OutlineInputBorder(),
-                  alignLabelWithHint: true, // Agar label sejajar dengan hint saat multiline
+      body: Center(
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+              child: Material(
+                elevation: 2,
+                borderRadius: BorderRadius.circular(18),
+                color: theme.cardColor,
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: _titleController,
+                        decoration: InputDecoration(
+                          labelText: 'Judul Diskusi',
+                          hintText: 'Masukkan judul yang menarik...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: theme.colorScheme.surface.withOpacity(0.05),
+                          prefixIcon: const Icon(Icons.title_rounded),
+                        ),
+                        style: theme.textTheme.bodyLarge,
+                        textInputAction: TextInputAction.next,
+                      ),
+                      const SizedBox(height: 24.0),
+                      Text(
+                        'Isi Diskusi',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 8.0),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: TextField(
+                          controller: _contentController,
+                          maxLines: 10,
+                          minLines: 6,
+                          keyboardType: TextInputType.multiline,
+                          decoration: InputDecoration(
+                            hintText: 'Silahkan tulis isi diskusi Anda di sini...',
+                            filled: true,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            alignLabelWithHint: true,
+                            contentPadding: const EdgeInsets.all(16),
+                          ),
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                      ),
+                      const SizedBox(height: 32.0),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.send_rounded),
+                        label: const Text('Posting Thread'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          textStyle: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 1,
+                        ),
+                        onPressed: _isUploading ? null : _uploadPost,
+                      ),
+                    ],
+                  ),
                 ),
-                style: const TextStyle(fontSize: 16),
               ),
             ),
-            const SizedBox(height: 16.0),
-          ],
+          ),
         ),
       ),
     );

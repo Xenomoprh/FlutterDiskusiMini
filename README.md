@@ -19,3 +19,12 @@ samples, guidance on mobile development, and a full API reference.
 # FlutterDiskusiMini
 amabtukam
 >>>>>>> cdda96c725e4757bb18d9d9804618c106e946e53
+
+## Konfigurasi Proyek
+
+Proyek ini menggunakan Firebase. File konfigurasi `lib/firebase_options.dart` tidak disertakan dalam repositori ini untuk alasan keamanan.
+
+Untuk membuat file ini, pastikan Anda memiliki akses ke proyek Firebase, lalu jalankan perintah berikut dari direktori root proyek:
+
+```bash
+flutterfire configure

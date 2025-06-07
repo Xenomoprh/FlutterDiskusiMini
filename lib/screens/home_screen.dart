@@ -1,4 +1,4 @@
-// lib/screens/home_screen.dart (REVISI - Tombol Opsi diperbaiki)
+// lib/screens/home_screen.dart (REVISI - FUNGSI VOTE DIPERBAIKI)
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,10 +6,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:markdown_widget/markdown_widget.dart';
 
-// Import untuk halaman lain
 import '../pages/create_thread_page.dart';
 import '../pages/comment_page.dart';
-import '../pages/edit_thread_page.dart'; // Pastikan file ini ada
+import '../pages/edit_thread_page.dart';
 import 'login_screen.dart';
 import 'account_screen.dart';
 
@@ -138,7 +137,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// WIDGET KUSTOM UNTUK SETIAP KARTU THREAD
 class ThreadCard extends StatelessWidget {
   final String threadId;
   final Map<String, dynamic> data;
@@ -151,8 +149,7 @@ class ThreadCard extends StatelessWidget {
     required this.currentUser,
   });
 
-  // --- FUNGSI-FUNGSI HELPER DIPINDAHKAN KE SINI ---
-  Future<void> _showDeleteConfirmationDialog(BuildContext context, String threadTitle) {
+  Future<void> _showDeleteConfirmationDialog(BuildContext context, String threadTitle) async {
     final navigator = Navigator.of(context);
     return showDialog<void>(
       context: context,
@@ -175,8 +172,8 @@ class ThreadCard extends StatelessWidget {
 
   Future<void> _deleteThread(BuildContext context, String threadId) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final firestore = FirebaseFirestore.instance;
     try {
-      final firestore = FirebaseFirestore.instance;
       WriteBatch batch = firestore.batch();
       QuerySnapshot comments = await firestore.collection('threads').doc(threadId).collection('comments').get();
       for (var doc in comments.docs) { batch.delete(doc.reference); }
@@ -205,6 +202,7 @@ class ThreadCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final firestore = FirebaseFirestore.instance;
     final createdByUid = data['createdBy'] as String?;
     final threadTitle = data['title'] as String? ?? 'Tanpa Judul';
     final timestamp = data['timestamp'] as Timestamp?;
@@ -214,7 +212,8 @@ class ThreadCard extends StatelessWidget {
     String formattedDate = 'beberapa waktu lalu';
     if (timestamp != null) {
       final difference = DateTime.now().difference(timestamp.toDate());
-      if (difference.inDays > 0) formattedDate = DateFormat('dd MMM yy').format(timestamp.toDate());
+      if (difference.inDays > 7) formattedDate = DateFormat('dd MMM yy').format(timestamp.toDate());
+      else if (difference.inDays > 0) formattedDate = '${difference.inDays} hari yang lalu';
       else if (difference.inHours > 0) formattedDate = '${difference.inHours} jam yang lalu';
       else if (difference.inMinutes > 0) formattedDate = '${difference.inMinutes} menit yang lalu';
     }
@@ -229,9 +228,9 @@ class ThreadCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance.collection('users').doc(createdByUid).get(),
+              future: firestore.collection('users').doc(createdByUid).get(),
               builder: (context, userSnapshot) {
-                if (!userSnapshot.hasData) return const Row(children: [CircularProgressIndicator(strokeWidth: 2)]);
+                if (!userSnapshot.hasData) return const Row(children: [SizedBox(height: 40)]);
                 final displayName = (userSnapshot.data?.data() as Map<String, dynamic>?)?['displayName'] ?? 'Anonim';
                 return Row(
                   children: [
@@ -262,23 +261,11 @@ class ThreadCard extends StatelessWidget {
                         itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
                           const PopupMenuItem<String>(
                             value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit_outlined, size: 20),
-                                SizedBox(width: 8),
-                                Text('Edit'),
-                              ],
-                            ),
+                            child: Row(children: [Icon(Icons.edit_outlined, size: 20), SizedBox(width: 8), Text('Edit')]),
                           ),
                           const PopupMenuItem<String>(
                             value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                                SizedBox(width: 8),
-                                Text('Hapus', style: TextStyle(color: Colors.red)),
-                              ],
-                            ),
+                            child: Row(children: [Icon(Icons.delete_outline, size: 20, color: Colors.red), SizedBox(width: 8), Text('Hapus', style: TextStyle(color: Colors.red))]),
                           ),
                         ],
                       ),
@@ -302,16 +289,58 @@ class ThreadCard extends StatelessWidget {
             ),
             const Divider(height: 24),
             FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance.collection('threads').doc(threadId).collection('votes').doc(currentUser.uid).get(),
+              future: firestore.collection('threads').doc(threadId).collection('votes').doc(currentUser.uid).get(),
               builder: (context, voteSnapshot) {
                 if (!voteSnapshot.hasData) return const Center(child: SizedBox(height: 24, child: CircularProgressIndicator(strokeWidth: 2)));
                 final userVote = (voteSnapshot.data?.data() as Map<String, dynamic>?)?['voteType'];
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _ActionButton(icon: userVote == 'upvote' ? Icons.thumb_up_alt : Icons.thumb_up_alt_outlined, label: 'Suka', isSelected: userVote == 'upvote', onPressed: () async { /* Logika upvote */ }),
-                    _ActionButton(icon: userVote == 'downvote' ? Icons.thumb_down_alt : Icons.thumb_down_alt_outlined, label: 'Tidak Suka', isSelected: userVote == 'downvote', onPressed: () async { /* Logika downvote */ }),
-                    _ActionButton(icon: Icons.comment_outlined, label: 'Komentar', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CommentPage(threadId: threadId)))),
+                    _ActionButton(
+                      icon: userVote == 'upvote' ? Icons.thumb_up_alt : Icons.thumb_up_alt_outlined,
+                      label: 'Suka',
+                      isSelected: userVote == 'upvote',
+                      onPressed: () async {
+                        // --- LOGIKA UPVOTE LENGKAP DIMASUKKAN KEMBALI ---
+                        final docRef = firestore.collection('threads').doc(threadId).collection('votes').doc(currentUser.uid);
+                        final threadRef = firestore.collection('threads').doc(threadId);
+                        if (userVote == 'upvote') {
+                          await docRef.delete();
+                          await threadRef.update({'upvotes': FieldValue.increment(-1)});
+                        } else {
+                          await docRef.set({'voteType': 'upvote'});
+                          await threadRef.update({
+                            'upvotes': FieldValue.increment(1),
+                            if (userVote == 'downvote') 'downvotes': FieldValue.increment(-1),
+                          });
+                        }
+                      },
+                    ),
+                    _ActionButton(
+                      icon: userVote == 'downvote' ? Icons.thumb_down_alt : Icons.thumb_down_alt_outlined,
+                      label: 'Tidak Suka',
+                      isSelected: userVote == 'downvote',
+                      onPressed: () async {
+                        // --- LOGIKA DOWNVOTE LENGKAP DIMASUKKAN KEMBALI ---
+                        final docRef = firestore.collection('threads').doc(threadId).collection('votes').doc(currentUser.uid);
+                        final threadRef = firestore.collection('threads').doc(threadId);
+                        if (userVote == 'downvote') {
+                          await docRef.delete();
+                          await threadRef.update({'downvotes': FieldValue.increment(-1)});
+                        } else {
+                          await docRef.set({'voteType': 'downvote'});
+                          await threadRef.update({
+                            'downvotes': FieldValue.increment(1),
+                            if (userVote == 'upvote') 'upvotes': FieldValue.increment(-1),
+                          });
+                        }
+                      },
+                    ),
+                    _ActionButton(
+                      icon: Icons.comment_outlined,
+                      label: 'Komentar',
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CommentPage(threadId: threadId))),
+                    ),
                   ],
                 );
               },

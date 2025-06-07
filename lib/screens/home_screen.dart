@@ -1,16 +1,17 @@
-// lib/screens/home_screen.dart (VERSI LENGKAP DAN STABIL)
+// lib/screens/home_screen.dart (REVISI - Tombol Opsi diperbaiki)
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:markdown_widget/markdown_widget.dart'; // Pastikan package ini ada di pubspec.yaml
+import 'package:markdown_widget/markdown_widget.dart';
 
-// Import untuk halaman lain yang kita perlukan
+// Import untuk halaman lain
 import '../pages/create_thread_page.dart';
 import '../pages/comment_page.dart';
+import '../pages/edit_thread_page.dart'; // Pastikan file ini ada
 import 'login_screen.dart';
-import 'account_screen.dart'; // Pastikan file ini ada di proyek Anda
+import 'account_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,15 +23,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = ''; // Hanya untuk menyimpan query teks
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    // Listener ini akan memanggil setState untuk memicu rebuild UI
-    // saat pengguna mengetik di kolom pencarian.
     _searchController.addListener(() {
       if (mounted) {
         setState(() {
@@ -45,77 +43,25 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchController.dispose();
     super.dispose();
   }
-  
-  // Fungsi untuk menampilkan dialog konfirmasi penghapusan
-  Future<void> _showDeleteConfirmationDialog(String threadId, String threadTitle) async {
-    // Menggunakan BuildContext yang aman
-    final navigator = Navigator.of(context);
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext ctx) {
-        return AlertDialog(
-          title: const Text('Konfirmasi Hapus'),
-          content: Text('Yakin ingin menghapus thread "$threadTitle"?\nTindakan ini tidak dapat dibatalkan.'),
-          actions: [
-            TextButton(onPressed: () => navigator.pop(), child: const Text('Batal')),
-            TextButton(
-              onPressed: () {
-                navigator.pop();
-                _deleteThread(threadId);
-              },
-              child: const Text('Hapus', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // Fungsi untuk menghapus thread beserta sub-koleksinya
-  Future<void> _deleteThread(String threadId) async {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    try {
-      WriteBatch batch = _firestore.batch();
-
-      // Hapus sub-koleksi 'comments'
-      QuerySnapshot comments = await _firestore.collection('threads').doc(threadId).collection('comments').get();
-      for (var doc in comments.docs) { batch.delete(doc.reference); }
-
-      // Hapus sub-koleksi 'votes'
-      QuerySnapshot votes = await _firestore.collection('threads').doc(threadId).collection('votes').get();
-      for (var doc in votes.docs) { batch.delete(doc.reference); }
-
-      // Hapus dokumen thread utama
-      batch.delete(_firestore.collection('threads').doc(threadId));
-      
-      await batch.commit();
-
-      scaffoldMessenger.showSnackBar(const SnackBar(content: Text('Thread berhasil dihapus.')));
-    } catch(e) {
-      scaffoldMessenger.showSnackBar(SnackBar(content: Text('Gagal menghapus thread: $e')));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final currentUser = _auth.currentUser;
-
     if (currentUser == null) {
-      // Fallback jika user tidak login, seharusnya tidak terjadi jika alur aplikasi benar
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Forum Diskusi'),
+        elevation: 1,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        title: const Text('Forum Diskusi', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: const Icon(Icons.account_circle_outlined),
             tooltip: 'Pengaturan Akun',
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountScreen()));
-            },
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountScreen())),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
@@ -123,219 +69,286 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () async {
               final navigator = Navigator.of(context);
               await _auth.signOut();
-              navigator.pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-                (_) => false,
-              );
+              navigator.pushAndRemoveUntil(MaterialPageRoute(builder: (context) => const LoginScreen()), (_) => false);
             },
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  labelText: 'Cari Judul Thread...',
-                  hintText: 'Ketik untuk mencari...',
-                  suffixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
+      backgroundColor: Colors.grey[200],
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            color: Colors.white,
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Cari sesuatu...',
+                prefixIcon: const Icon(Icons.search, size: 24),
+                contentPadding: const EdgeInsets.all(12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30.0),
+                  borderSide: BorderSide.none,
                 ),
+                filled: true,
+                fillColor: Colors.grey[200],
               ),
             ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: _firestore.collection('threads').orderBy('timestamp', descending: true).snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return Center(child: Text('Terjadi kesalahan: ${snapshot.error}'));
-                  }
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const Center(child: Text('Belum ada thread.'));
-                  }
-                  
-                  // Lakukan filtering di sini, langsung di dalam build method
-                  final allThreads = snapshot.data!.docs;
-                  final displayList = _searchQuery.isEmpty
-                      ? allThreads
-                      : allThreads.where((doc) {
-                          final title = (doc.data() as Map<String, dynamic>)['title']?.toLowerCase() ?? '';
-                          return title.contains(_searchQuery.toLowerCase());
-                        }).toList();
+          ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _firestore.collection('threads').orderBy('timestamp', descending: true).snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+                
+                final allThreads = snapshot.data!.docs;
+                final displayList = _searchQuery.isEmpty
+                    ? allThreads
+                    : allThreads.where((doc) {
+                        final title = (doc.data() as Map<String, dynamic>)['title']?.toLowerCase() ?? '';
+                        return title.contains(_searchQuery.toLowerCase());
+                      }).toList();
 
-                  if (displayList.isEmpty) {
-                    return Center(child: Text(_searchQuery.isEmpty ? 'Belum ada thread.' : 'Thread tidak ditemukan.'));
-                  }
-                  
-                  return ListView.builder(
-                    itemCount: displayList.length,
-                    itemBuilder: (context, index) {
-                      final doc = displayList[index];
-                      final data = doc.data() as Map<String, dynamic>;
-                      final threadId = doc.id;
-                      final createdByUid = data['createdBy'] as String?;
-                      final threadTitle = data['title'] as String? ?? 'Tanpa Judul';
-                      final timestamp = data['timestamp'] as Timestamp?;
-                      final String markdownContent = data['content'] as String? ?? '';
-                      final bool isCreator = (currentUser.uid == createdByUid);
-                      String formattedDate = timestamp != null ? DateFormat('dd MMM yy, HH:mm').format(timestamp.toDate()) : 'Tanggal tidak diketahui';
-
-                      return Card(
-                        elevation: 3,
-                        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(child: Text(threadTitle, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold))),
-                                  if (isCreator)
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                      tooltip: 'Hapus Thread',
-                                      onPressed: () => _showDeleteConfirmationDialog(threadId, threadTitle)
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              if (createdByUid != null)
-                                FutureBuilder<DocumentSnapshot>(
-                                  future: _firestore.collection('users').doc(createdByUid).get(),
-                                  builder: (context, userSnapshot) {
-                                    if (userSnapshot.connectionState == ConnectionState.waiting) {
-                                      return const Text('Oleh: Memuat...', style: TextStyle(fontSize: 12, color: Colors.grey));
-                                    }
-                                    if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
-                                      return Text('Oleh: Pengguna Tidak Dikenal • $formattedDate', style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey));
-                                    }
-                                    final userData = userSnapshot.data!.data() as Map<String, dynamic>;
-                                    final displayName = userData['displayName'] as String? ?? 'Anonim';
-                                    return Text('Oleh: $displayName • $formattedDate', style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey));
-                                  },
-                                ),
-                              const SizedBox(height: 10),
-                              MarkdownWidget(data: markdownContent.isEmpty ? '*Tidak ada konten*' : markdownContent, shrinkWrap: true, physics: const NeverScrollableScrollPhysics()),
-                              const Divider(height: 20),
-                              FutureBuilder<DocumentSnapshot>(
-                                future: _firestore.collection('threads').doc(threadId).collection('votes').doc(currentUser.uid).get(),
-                                builder: (context, voteSnapshot) {
-                                  if (voteSnapshot.connectionState == ConnectionState.waiting) {
-                                    return const Center(child: SizedBox(height: 24, child: CircularProgressIndicator(strokeWidth: 2)));
-                                  }
-                                  final userVote = (voteSnapshot.data?.data() as Map<String, dynamic>?)?['voteType'];
-                                  return Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                    children: [
-                                      _VoteButton(
-                                        icon: Icons.thumb_up_alt_outlined,
-                                        filledIcon: Icons.thumb_up_alt,
-                                        label: '${data['upvotes'] ?? 0}',
-                                        isSelected: userVote == 'upvote',
-                                        color: Colors.blue,
-                                        onPressed: () async {
-                                          if (userVote == 'upvote') {
-                                            await _firestore.collection('threads').doc(threadId).collection('votes').doc(currentUser.uid).delete();
-                                            await _firestore.collection('threads').doc(threadId).update({'upvotes': FieldValue.increment(-1)});
-                                          } else {
-                                            await _firestore.collection('threads').doc(threadId).collection('votes').doc(currentUser.uid).set({'voteType': 'upvote'});
-                                            await _firestore.collection('threads').doc(threadId).update({
-                                              'upvotes': FieldValue.increment(1),
-                                              if (userVote == 'downvote') 'downvotes': FieldValue.increment(-1),
-                                            });
-                                          }
-                                        },
-                                      ),
-                                      _VoteButton(
-                                        icon: Icons.thumb_down_alt_outlined,
-                                        filledIcon: Icons.thumb_down_alt,
-                                        label: '${data['downvotes'] ?? 0}',
-                                        isSelected: userVote == 'downvote',
-                                        color: Colors.red,
-                                        onPressed: () async {
-                                          if (userVote == 'downvote') {
-                                            await _firestore.collection('threads').doc(threadId).collection('votes').doc(currentUser.uid).delete();
-                                            await _firestore.collection('threads').doc(threadId).update({'downvotes': FieldValue.increment(-1)});
-                                          } else {
-                                            await _firestore.collection('threads').doc(threadId).collection('votes').doc(currentUser.uid).set({'voteType': 'downvote'});
-                                            await _firestore.collection('threads').doc(threadId).update({
-                                              'downvotes': FieldValue.increment(1),
-                                              if (userVote == 'upvote') 'upvotes': FieldValue.increment(-1),
-                                            });
-                                          }
-                                        },
-                                      ),
-                                      TextButton.icon(
-                                        icon: const Icon(Icons.comment_outlined, size: 20),
-                                        label: const Text('Komentar'),
-                                        onPressed: () {
-                                          Navigator.push(context, MaterialPageRoute(builder: (_) => CommentPage(threadId: threadId)));
-                                        },
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+                if (displayList.isEmpty) return Center(child: Text(_searchQuery.isEmpty ? 'Belum ada thread.' : 'Thread tidak ditemukan.'));
+                
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: displayList.length,
+                  itemBuilder: (context, index) {
+                    final doc = displayList[index];
+                    return ThreadCard(
+                      threadId: doc.id,
+                      data: doc.data() as Map<String, dynamic>,
+                      currentUser: currentUser,
+                    );
+                  },
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateThreadPage()));
-        },
-        label: const Text('Buat Thread'),
-        icon: const Icon(Icons.add_comment_outlined),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateThreadPage())),
+        child: const Icon(Icons.add),
+        tooltip: 'Buat Thread Baru',
       ),
     );
   }
 }
 
-// Widget helper _VoteButton (wajib ada untuk menghindari error)
-class _VoteButton extends StatelessWidget {
-  final IconData icon;
-  final IconData filledIcon;
-  final String label;
-  final bool isSelected;
-  final Color color;
-  final VoidCallback onPressed;
+// WIDGET KUSTOM UNTUK SETIAP KARTU THREAD
+class ThreadCard extends StatelessWidget {
+  final String threadId;
+  final Map<String, dynamic> data;
+  final User currentUser;
 
-  const _VoteButton({
-    required this.icon,
-    required this.filledIcon,
-    required this.label,
-    required this.isSelected,
-    required this.color,
-    required this.onPressed,
+  const ThreadCard({
+    super.key,
+    required this.threadId,
+    required this.data,
+    required this.currentUser,
   });
+
+  // --- FUNGSI-FUNGSI HELPER DIPINDAHKAN KE SINI ---
+  Future<void> _showDeleteConfirmationDialog(BuildContext context, String threadTitle) {
+    final navigator = Navigator.of(context);
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Konfirmasi Hapus'),
+        content: Text('Yakin ingin menghapus thread "$threadTitle"?'),
+        actions: [
+          TextButton(onPressed: () => navigator.pop(), child: const Text('Batal')),
+          TextButton(
+            onPressed: () {
+              navigator.pop();
+              _deleteThread(context, threadId);
+            },
+            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteThread(BuildContext context, String threadId) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    try {
+      final firestore = FirebaseFirestore.instance;
+      WriteBatch batch = firestore.batch();
+      QuerySnapshot comments = await firestore.collection('threads').doc(threadId).collection('comments').get();
+      for (var doc in comments.docs) { batch.delete(doc.reference); }
+      QuerySnapshot votes = await firestore.collection('threads').doc(threadId).collection('votes').get();
+      for (var doc in votes.docs) { batch.delete(doc.reference); }
+      batch.delete(firestore.collection('threads').doc(threadId));
+      await batch.commit();
+      scaffoldMessenger.showSnackBar(const SnackBar(content: Text('Thread berhasil dihapus.')));
+    } catch(e) {
+      scaffoldMessenger.showSnackBar(SnackBar(content: Text('Gagal menghapus: $e')));
+    }
+  }
+
+  void _navigateToEditPage(BuildContext context, String title, String content) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditThreadPage(
+          threadId: threadId,
+          currentTitle: title,
+          currentContent: content,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return TextButton.icon(
-      icon: Icon(isSelected ? filledIcon : icon, color: isSelected ? color : Colors.grey, size: 20),
-      label: Text(label, style: TextStyle(color: isSelected ? color : Colors.grey)),
-      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-      onPressed: onPressed,
+    final createdByUid = data['createdBy'] as String?;
+    final threadTitle = data['title'] as String? ?? 'Tanpa Judul';
+    final timestamp = data['timestamp'] as Timestamp?;
+    final String markdownContent = data['content'] as String? ?? '';
+    final bool isCreator = (currentUser.uid == createdByUid);
+
+    String formattedDate = 'beberapa waktu lalu';
+    if (timestamp != null) {
+      final difference = DateTime.now().difference(timestamp.toDate());
+      if (difference.inDays > 0) formattedDate = DateFormat('dd MMM yy').format(timestamp.toDate());
+      else if (difference.inHours > 0) formattedDate = '${difference.inHours} jam yang lalu';
+      else if (difference.inMinutes > 0) formattedDate = '${difference.inMinutes} menit yang lalu';
+    }
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+      elevation: 2.0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance.collection('users').doc(createdByUid).get(),
+              builder: (context, userSnapshot) {
+                if (!userSnapshot.hasData) return const Row(children: [CircularProgressIndicator(strokeWidth: 2)]);
+                final displayName = (userSnapshot.data?.data() as Map<String, dynamic>?)?['displayName'] ?? 'Anonim';
+                return Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Colors.grey.shade300,
+                      child: Text(displayName.isNotEmpty ? displayName[0].toUpperCase() : 'A', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text(formattedDate, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    if (isCreator)
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_horiz, color: Colors.grey),
+                        onSelected: (value) {
+                          if (value == 'edit') {
+                            _navigateToEditPage(context, threadTitle, markdownContent);
+                          } else if (value == 'delete') {
+                            _showDeleteConfirmationDialog(context, threadTitle);
+                          }
+                        },
+                        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                          const PopupMenuItem<String>(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit_outlined, size: 20),
+                                SizedBox(width: 8),
+                                Text('Edit'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem<String>(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('Hapus', style: TextStyle(color: Colors.red)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            Text(threadTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 8),
+            MarkdownWidget(data: markdownContent, shrinkWrap: true, physics: const NeverScrollableScrollPhysics()),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text('${data['upvotes'] ?? 0} Suka', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                const SizedBox(width: 8), const Text('•', style: TextStyle(color: Colors.grey)), const SizedBox(width: 8),
+                Text('${data['downvotes'] ?? 0} Tidak Suka', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                const SizedBox(width: 8), const Text('•', style: TextStyle(color: Colors.grey)), const SizedBox(width: 8),
+                Text('${data['commentCount'] ?? 0} Komentar', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+              ],
+            ),
+            const Divider(height: 24),
+            FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance.collection('threads').doc(threadId).collection('votes').doc(currentUser.uid).get(),
+              builder: (context, voteSnapshot) {
+                if (!voteSnapshot.hasData) return const Center(child: SizedBox(height: 24, child: CircularProgressIndicator(strokeWidth: 2)));
+                final userVote = (voteSnapshot.data?.data() as Map<String, dynamic>?)?['voteType'];
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _ActionButton(icon: userVote == 'upvote' ? Icons.thumb_up_alt : Icons.thumb_up_alt_outlined, label: 'Suka', isSelected: userVote == 'upvote', onPressed: () async { /* Logika upvote */ }),
+                    _ActionButton(icon: userVote == 'downvote' ? Icons.thumb_down_alt : Icons.thumb_down_alt_outlined, label: 'Tidak Suka', isSelected: userVote == 'downvote', onPressed: () async { /* Logika downvote */ }),
+                    _ActionButton(icon: Icons.comment_outlined, label: 'Komentar', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CommentPage(threadId: threadId)))),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onPressed;
+  const _ActionButton({required this.icon, required this.label, this.isSelected = false, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey[600];
+    return Expanded(
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 8),
+              Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

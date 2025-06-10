@@ -95,35 +95,42 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _firestore.collection('threads').orderBy('timestamp', descending: true).snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
-                
-                final allThreads = snapshot.data!.docs;
-                final displayList = _searchQuery.isEmpty
-                    ? allThreads
-                    : allThreads.where((doc) {
-                        final title = (doc.data() as Map<String, dynamic>)['title']?.toLowerCase() ?? '';
-                        return title.contains(_searchQuery.toLowerCase());
-                      }).toList();
-
-                if (displayList.isEmpty) return Center(child: Text(_searchQuery.isEmpty ? 'Belum ada thread.' : 'Thread tidak ditemukan.'));
-                
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: displayList.length,
-                  itemBuilder: (context, index) {
-                    final doc = displayList[index];
-                    return ThreadCard(
-                      threadId: doc.id,
-                      data: doc.data() as Map<String, dynamic>,
-                      currentUser: currentUser,
-                    );
-                  },
-                );
+            child: RefreshIndicator(
+              onRefresh: () async {
+                // Force rebuild, StreamBuilder akan otomatis update data terbaru
+                setState(() {});
+                // Jika ingin benar-benar reload dari Firestore, bisa tambahkan logika lain di sini
               },
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _firestore.collection('threads').orderBy('timestamp', descending: true).snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+                  
+                  final allThreads = snapshot.data!.docs;
+                  final displayList = _searchQuery.isEmpty
+                      ? allThreads
+                      : allThreads.where((doc) {
+                          final title = (doc.data() as Map<String, dynamic>)['title']?.toLowerCase() ?? '';
+                          return title.contains(_searchQuery.toLowerCase());
+                        }).toList();
+
+                  if (displayList.isEmpty) return Center(child: Text(_searchQuery.isEmpty ? 'Belum ada thread.' : 'Thread tidak ditemukan.'));
+                  
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: displayList.length,
+                    itemBuilder: (context, index) {
+                      final doc = displayList[index];
+                      return ThreadCard(
+                        threadId: doc.id,
+                        data: doc.data() as Map<String, dynamic>,
+                        currentUser: currentUser,
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ),
         ],

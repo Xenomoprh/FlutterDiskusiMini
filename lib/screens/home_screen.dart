@@ -1,5 +1,3 @@
-// lib/screens/home_screen.dart (REVISI - FUNGSI VOTE DIPERBAIKI)
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -57,6 +55,13 @@ class _HomeScreenState extends State<HomeScreen> {
         foregroundColor: Colors.black87,
         title: const Text('Forum Diskusi', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: () {
+              setState(() {}); // Memicu rebuild dan refresh StreamBuilder
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.account_circle_outlined),
             tooltip: 'Pengaturan Akun',
